@@ -11,6 +11,7 @@ from app.models.audit import AuditLog
 from app.models.doctor import DoctorPatientAccess, ClinicalReviewNote
 from app.models.lifestyle import LifestyleLog, LifestyleGoal
 from app.models.clinical_alert import ClinicalAlert
+from app.models.cardiovascular_assessment import CardiovascularAssessment
 
 __all__ = [
     "User",
@@ -35,4 +36,5 @@ __all__ = [
     "LifestyleLog",
     "LifestyleGoal",
     "ClinicalAlert",
+    "CardiovascularAssessment",
 ]

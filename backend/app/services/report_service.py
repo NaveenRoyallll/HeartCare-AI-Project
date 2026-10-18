@@ -10,6 +10,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.blood_report import BloodReport, BloodReportResult
 
+try:
+    from pypdf import PdfReader
+except ImportError:  # pragma: no cover - dependency is declared but may be absent in minimal deployments
+    PdfReader = None
+
+try:
+    from PIL import Image
+    import pytesseract
+except ImportError:  # pragma: no cover - dependency is declared but may be absent in minimal deployments
+    Image = None
+    pytesseract = None
+
 ALLOWED_MIME_TYPES = {
     "application/pdf",
     "image/jpeg",
@@ -115,14 +127,24 @@ class ReportService:
         async with aiofiles.open(file_path, "wb") as f:
             await f.write(content)
 
-        # Extract text (supports text files directly, fallback mock OCR for binary for testing/dev)
-        raw_text = ""
+        # Binary inputs are extracted only through real parsers/OCR. No fallback
+        # text or clinical values are fabricated when a provider is unavailable.
+        pages: List[tuple[int, str]] = []
         if file.content_type == "text/plain":
-            raw_text = content.decode("utf-8", errors="ignore")
-        else:
-            # Binary reports require a reviewed OCR/parser integration. Never
-            # fabricate clinical values when that service is unavailable.
-            raw_text = None
+            pages = [(1, content.decode("utf-8", errors="ignore"))]
+        elif file.content_type == "application/pdf":
+            if PdfReader is not None:
+                reader = PdfReader(file_path)
+                pages = [(index + 1, page.extract_text() or "") for index, page in enumerate(reader.pages)]
+            else:
+                pages = []
+        elif file.content_type in {"image/jpeg", "image/png"}:
+            if Image is not None and pytesseract is not None:
+                pages = [(1, pytesseract.image_to_string(Image.open(file_path)))]
+            else:
+                pages = []
+        raw_text = "\n".join(text for _, text in pages) if pages else None
+        processing_status = "completed" if raw_text and raw_text.strip() else "pending_manual_review"
 
         # Save BloodReport model
         report = BloodReport(
@@ -133,7 +155,7 @@ class ReportService:
             mime_type=file.content_type,
             report_date=datetime.now().date(),
             lab_name="Diagnostic Pathology Lab",
-            processing_status="completed" if raw_text is not None else "pending_manual_review",
+            processing_status=processing_status,
             raw_text=raw_text,
         )
         db.add(report)
@@ -141,17 +163,23 @@ class ReportService:
 
         # Extract biomarkers using regex rules
         if raw_text is not None:
-            cls._extract_biomarkers(report.id, raw_text, db)
+            cls._extract_biomarkers(report.id, pages, db)
 
         await db.commit()
         await db.refresh(report)
         return report
 
     @classmethod
-    def _extract_biomarkers(cls, report_id: str, text: str, db: AsyncSession) -> None:
+    def _extract_biomarkers(cls, report_id: str, pages: List[tuple[int, str]], db: AsyncSession) -> None:
         """Parse structured lab biomarkers from report text."""
         for pattern in LAB_BIOMARKER_PATTERNS:
-            match = re.search(pattern["regex"], text, re.IGNORECASE)
+            match = None
+            page_number = None
+            for number, page_text in pages:
+                match = re.search(pattern["regex"], page_text, re.IGNORECASE)
+                if match:
+                    page_number = number
+                    break
             if match:
                 val = float(match.group(1))
                 min_r = pattern["min"]
@@ -175,7 +203,7 @@ class ReportService:
                     flag=flag,
                     source_excerpt=match.group(0),
                     extraction_confidence=0.85,
-                    source_page=None,
+                    source_page=page_number,
                     user_confirmed=False,
                 )
                 db.add(result_item)

@@ -12,6 +12,7 @@ from app.api.routes import (
     doctor,
     health,
     lifestyle,
+    assessments,
 )
 
 api_router = APIRouter()
@@ -27,3 +28,4 @@ api_router.include_router(reports.router)
 api_router.include_router(doctor.router)
 api_router.include_router(health.router)
 api_router.include_router(lifestyle.router)
+api_router.include_router(assessments.router)
