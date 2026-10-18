@@ -88,6 +88,14 @@ class ApiClient {
   listVitals<T>(): Promise<T> {
     return this.get<T>('/vitals/?limit=100');
   }
+
+  evaluateCardiovascularAssessment<T>(data: unknown): Promise<T> {
+    return this.post<T>('/assessments/evaluate', data);
+  }
+
+  listAssessmentHistory<T>(): Promise<T> {
+    return this.get<T>('/assessments/history?limit=10');
+  }
 }
 
 export const api = new ApiClient();

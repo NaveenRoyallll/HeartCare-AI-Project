@@ -11,6 +11,7 @@ interface HealthState {
   isLoading: boolean;
   dataSource: 'live' | 'empty';
   error: string | null;
+  latestAssessment: CardiovascularAssessment | null;
 
   initialize: () => Promise<void>;
   addMeasurement: (measurement: Omit<VitalMeasurement, 'id'>) => Promise<void>;
@@ -19,6 +20,19 @@ interface HealthState {
   addMedication: (medication: Omit<Medication, 'id'>) => Promise<void>;
   toggleMedicationActive: (id: string) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
+  evaluateCardiovascularHealth: () => Promise<void>;
+}
+
+export interface CardiovascularAssessment {
+  id: string;
+  assessment_kind: string;
+  classification: string;
+  data_quality: string;
+  missing_inputs: string[];
+  uncertainty: string[];
+  recommendations: string[];
+  observations_considered: Array<{ name: string; value?: unknown; measured_at?: string }>;
+  created_at: string;
 }
 
 const INITIAL_RISK_SCORE: CardiovascularRiskScore = {
@@ -40,6 +54,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
   isLoading: false,
   dataSource: 'empty',
   error: null,
+  latestAssessment: null,
 
   initialize: async () => {
     try {
@@ -64,6 +79,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
         instructions?: string | null; start_date: string; end_date?: string | null;
         is_active: boolean;
       }>>('/medications/');
+      const assessmentHistory = await api.listAssessmentHistory<{ items: CardiovascularAssessment[] }>();
       const medications = backendMeds.map((item) => ({
         id: item.id,
         name: item.name,
@@ -76,7 +92,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
         instructions: item.instructions || undefined,
         isActive: item.is_active,
       }));
-      set({ measurements, medications, dataSource: 'live', isLoading: false });
+      set({ measurements, medications, latestAssessment: assessmentHistory.items[0] || null, dataSource: 'live', isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: error instanceof Error ? error.message : 'Unable to load live health data' });
     }
@@ -139,5 +155,17 @@ export const useHealthStore = create<HealthState>((set, get) => ({
     set((state) => ({
       medications: state.medications.filter((m) => m.id !== id),
     }));
+  },
+
+  evaluateCardiovascularHealth: async () => {
+    const latestBp = get().getLatestMeasurement('bp');
+    const latestHr = get().getLatestMeasurement('heart_rate');
+    const assessment = await api.evaluateCardiovascularAssessment<CardiovascularAssessment>({
+      symptoms: [],
+      heart_rate: latestHr?.value,
+      systolic_bp: latestBp?.value,
+      diastolic_bp: latestBp?.secondaryValue,
+    });
+    set({ latestAssessment: assessment });
   },
 }));

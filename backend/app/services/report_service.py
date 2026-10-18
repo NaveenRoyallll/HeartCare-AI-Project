@@ -18,9 +18,11 @@ except ImportError:  # pragma: no cover - dependency is declared but may be abse
 try:
     from PIL import Image
     import pytesseract
+    from pdf2image import convert_from_path
 except ImportError:  # pragma: no cover - dependency is declared but may be absent in minimal deployments
     Image = None
     pytesseract = None
+    convert_from_path = None
 
 ALLOWED_MIME_TYPES = {
     "application/pdf",
@@ -136,6 +138,9 @@ class ReportService:
             if PdfReader is not None:
                 reader = PdfReader(file_path)
                 pages = [(index + 1, page.extract_text() or "") for index, page in enumerate(reader.pages)]
+                if not any(text.strip() for _, text in pages) and pytesseract is not None and convert_from_path is not None:
+                    images = convert_from_path(file_path, first_page=1, last_page=len(reader.pages))
+                    pages = [(index + 1, pytesseract.image_to_string(image)) for index, image in enumerate(images)]
             else:
                 pages = []
         elif file.content_type in {"image/jpeg", "image/png"}:

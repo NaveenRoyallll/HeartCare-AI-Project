@@ -14,7 +14,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 
 export default function HeartHealthScreen() {
-  const { riskScore, riskFactors, getMeasurementsByType } = useHealthStore();
+  const { riskScore, riskFactors, getMeasurementsByType, latestAssessment, evaluateCardiovascularHealth } = useHealthStore();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'modifiable' | 'non_modifiable'>('all');
 
   const bpMeasurements = getMeasurementsByType('bp');
@@ -79,6 +79,30 @@ export default function HeartHealthScreen() {
             <Ionicons name="information-circle-outline" size={18} color="#0284C7" />
             <Text style={styles.disclaimerText}>{riskScore.disclaimer}</Text>
           </View>
+        </Card>
+
+        <Card style={styles.scoreCard}>
+          <View style={styles.scoreTopRow}>
+            <View>
+              <Text style={styles.scoreLabel}>Unified health review</Text>
+              <Text style={styles.scoreSub}>
+                {latestAssessment ? `Updated ${new Date(latestAssessment.created_at).toLocaleDateString()}` : 'No review recorded yet'}
+              </Text>
+            </View>
+            <Badge
+              label={latestAssessment?.classification?.replace('_', ' ').toUpperCase() || 'NOT RUN'}
+              status={latestAssessment?.classification === 'higher_attention' ? 'warning' : 'normal'}
+            />
+          </View>
+          <Text style={styles.bpAdvice}>
+            This prevention review shows its inputs, missing data, and uncertainty. It is not a diagnosis and does not replace emergency care.
+          </Text>
+          <TouchableOpacity style={styles.filterPillActive} onPress={() => void evaluateCardiovascularHealth()}>
+            <Text style={styles.filterPillTextActive}>Refresh health review</Text>
+          </TouchableOpacity>
+          {latestAssessment?.missing_inputs?.length ? (
+            <Text style={styles.bpAdvice}>Missing: {latestAssessment.missing_inputs.join(', ')}</Text>
+          ) : null}
         </Card>
 
         {/* Key Clinical Recommendations */}

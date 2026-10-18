@@ -1,0 +1,2 @@
+Total Cholesterol: 245 mg/dL
+HDL: 42 mg/dL

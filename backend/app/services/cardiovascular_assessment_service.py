@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.blood_report import BloodReportResult
+from app.models.blood_report import BloodReport, BloodReportResult
 from app.models.cardiovascular_assessment import CardiovascularAssessment
 from app.models.lifestyle import LifestyleLog
 from app.models.medical_history import FamilyHistory, MedicalHistory
@@ -65,7 +65,10 @@ class CardiovascularAssessmentService:
             select(LifestyleLog).where(LifestyleLog.user_id == user_id).order_by(desc(LifestyleLog.logged_date)).limit(30)
         )).scalars().all()
         labs = (await db.execute(
-            select(BloodReportResult).where(BloodReportResult.user_confirmed.is_(True)).order_by(desc(BloodReportResult.created_at)).limit(30)
+            select(BloodReportResult)
+            .join(BloodReport, BloodReport.id == BloodReportResult.report_id)
+            .where(BloodReportResult.user_confirmed.is_(True), BloodReport.user_id == user_id)
+            .order_by(desc(BloodReportResult.created_at)).limit(30)
         )).scalars().all()
 
         missing: List[str] = []

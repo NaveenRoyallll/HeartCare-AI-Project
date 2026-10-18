@@ -18,5 +18,6 @@ aiofiles==24.1.0
 pypdf==5.1.0
 Pillow==11.0.0
 pytesseract==0.3.13
+pdf2image==1.17.0
 celery[redis]==5.4.0
 redis==5.1.1
