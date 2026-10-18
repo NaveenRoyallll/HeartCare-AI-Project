@@ -20,6 +20,7 @@ class BloodReport(Base):
     report_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     lab_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     processing_status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)  # pending, completed, failed
+    processing_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     raw_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 

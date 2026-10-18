@@ -41,7 +41,7 @@ export default function PatientDetailPage() {
   const patientId = params.id as string;
 
   const [patientData, setPatientData] = useState<PatientDetail | null>(null);
-  const [activeTab, setActiveTab] = useState<"vitals" | "risk" | "diagnostics" | "medications" | "notes">("vitals");
+  const [activeTab, setActiveTab] = useState<"vitals" | "assessment" | "risk" | "diagnostics" | "medications" | "notes">("vitals");
   const [isLoading, setIsLoading] = useState(true);
 
   // New Note Modal state
@@ -113,7 +113,7 @@ export default function PatientDetailPage() {
     );
   }
 
-  const { demographics, conditions, medications, currentRisk, recentVitals, labs, ecgs, notes, activeAlerts } =
+  const { demographics, conditions, medications, currentRisk, recentVitals, labs, ecgs, notes, activeAlerts, assessments, assessmentSourceMeasurements } =
     patientData;
 
   // Access check
@@ -172,7 +172,9 @@ export default function PatientDetailPage() {
                   <h2 className="text-xl font-bold text-slate-900">
                     {demographics.fullName}
                   </h2>
-                  <RiskBadge level={currentRisk.riskLevel} />
+                  {currentRisk ? <RiskBadge level={currentRisk.riskLevel} /> : (
+                    <Badge variant="default" size="sm">NOT ASSESSED</Badge>
+                  )}
                   <Badge
                     variant={demographics.status === "critical" ? "danger" : "secondary"}
                     size="sm"
@@ -238,6 +240,18 @@ export default function PatientDetailPage() {
       {/* Clinical Tabs Bar */}
       <div className="border-b border-slate-200">
         <nav className="flex space-x-6 overflow-x-auto text-sm font-medium">
+          <button
+            onClick={() => setActiveTab("assessment")}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === "assessment"
+                ? "border-navy-900 text-navy-900 font-bold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Assessment History ({assessments.length})</span>
+          </button>
+
           <button
             onClick={() => setActiveTab("vitals")}
             className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
@@ -391,8 +405,87 @@ export default function PatientDetailPage() {
         </div>
       )}
 
+      {/* TAB 2: UNIFIED ASSESSMENT HISTORY */}
+      {activeTab === "assessment" && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Unified cardiovascular assessment history</CardTitle>
+              <CardDescription>
+                Backend records include acute triage, longitudinal observations, source measurements, missing data, uncertainty, and recommendations.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {assessments.length === 0 ? (
+                <p className="text-sm text-slate-500">No assessment has been recorded for this authorized patient.</p>
+              ) : assessments.map((assessment) => (
+                <div key={assessment.id} className="rounded-xl border border-slate-200 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-slate-900">
+                        {assessment.assessment_kind === "acute_triage" ? "Acute emergency triage" : "Longitudinal cardiovascular review"}
+                      </p>
+                      <p className="text-xs text-slate-500">{formatDateTime(assessment.created_at)}</p>
+                    </div>
+                    <Badge variant={assessment.classification === "EMERGENCY" || assessment.classification === "higher_attention" ? "danger" : "secondary"} size="sm">
+                      {assessment.classification.replaceAll("_", " ")}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-600">Data quality: <strong>{assessment.data_quality}</strong></p>
+                  {assessment.observations_considered.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-slate-500">Observations considered</p>
+                      <ul className="mt-1 list-disc pl-5 text-sm text-slate-700">
+                        {assessment.observations_considered.map((observation, index) => (
+                          <li key={`${assessment.id}-observation-${index}`}>
+                            {observation.name}: {String(observation.value ?? "recorded")}
+                            {observation.measured_at ? ` (${formatDateTime(observation.measured_at)})` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {assessment.missing_inputs.length > 0 && (
+                    <p className="text-sm text-amber-700"><strong>Missing:</strong> {assessment.missing_inputs.join(", ")}</p>
+                  )}
+                  {assessment.uncertainty.length > 0 && (
+                    <p className="text-sm text-amber-700"><strong>Uncertainty:</strong> {assessment.uncertainty.join(" ")}</p>
+                  )}
+                  {assessment.recommendations.length > 0 && (
+                    <div><p className="text-xs font-bold uppercase text-slate-500">Recommended next steps</p><ul className="list-disc pl-5 text-sm text-slate-700">{assessment.recommendations.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                  )}
+                  {assessment.emergency_guidance.length > 0 && (
+                    <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800"><strong>Emergency guidance:</strong> {assessment.emergency_guidance.join(" ")}</div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Relevant source measurements</CardTitle>
+              <CardDescription>Measurements are shown with their original timestamp and source.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {assessmentSourceMeasurements.length === 0 ? (
+                <p className="text-sm text-slate-500">No source measurements are available.</p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {assessmentSourceMeasurements.map((measurement) => (
+                    <div key={measurement.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+                      <strong>{measurement.type.replaceAll("_", " ")}</strong>: {measurement.value}{measurement.secondaryValue !== undefined ? `/${measurement.secondaryValue}` : ""} {measurement.unit}
+                      <div className="text-xs text-slate-500">{formatDateTime(measurement.timestamp)} · {measurement.source}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* TAB 2: AI RISK STRATIFICATION */}
-      {activeTab === "risk" && (
+      {activeTab === "risk" && currentRisk && (
         <div className="space-y-6">
           <Card>
             <CardHeader>

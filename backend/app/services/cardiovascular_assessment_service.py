@@ -12,6 +12,10 @@ from app.models.medical_history import FamilyHistory, MedicalHistory
 from app.models.user import UserProfile
 from app.models.vital import VitalMeasurement
 from app.services.emergency_service import EmergencyService
+from app.clinical.rules_engine import ClinicalRulesEngine
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CardiovascularAssessmentService:
@@ -19,18 +23,43 @@ class CardiovascularAssessmentService:
 
     def __init__(self, emergency_service: Optional[EmergencyService] = None):
         self.emergency_service = emergency_service or EmergencyService()
+        self.rules_engine = ClinicalRulesEngine()
 
     async def evaluate(self, user_id: str, data: Dict[str, Any], db: AsyncSession) -> CardiovascularAssessment:
-        emergency = await self.emergency_service.triage_symptoms(
-            symptoms=data.get("symptoms", []),
-            heart_rate=data.get("heart_rate"),
-            systolic_bp=data.get("systolic_bp"),
-            diastolic_bp=data.get("diastolic_bp"),
-            symptom_severity=data.get("symptom_severity"),
-            symptom_duration_minutes=data.get("symptom_duration_minutes"),
-            symptom_onset=data.get("symptom_onset"),
-            symptoms_worsening=data.get("symptoms_worsening"),
-        )
+        provider_unavailable = False
+        try:
+            emergency = await self.emergency_service.triage_symptoms(
+                symptoms=data.get("symptoms", []),
+                heart_rate=data.get("heart_rate"),
+                systolic_bp=data.get("systolic_bp"),
+                diastolic_bp=data.get("diastolic_bp"),
+                symptom_severity=data.get("symptom_severity"),
+                symptom_duration_minutes=data.get("symptom_duration_minutes"),
+                symptom_onset=data.get("symptom_onset"),
+                symptoms_worsening=data.get("symptoms_worsening"),
+            )
+        except Exception:
+            provider_unavailable = True
+            logger.exception("Assessment triage provider failed; using deterministic safety fallback")
+            fallback = self.rules_engine.evaluate_patient_status(
+                symptoms=data.get("symptoms", []),
+                vitals=[
+                    {"measurement_type": "heart_rate", "value_primary": data["heart_rate"]}
+                    for _ in [0] if data.get("heart_rate") is not None
+                ] + [
+                    {
+                        "measurement_type": "blood_pressure",
+                        "value_primary": data["systolic_bp"],
+                        "value_secondary": data.get("diastolic_bp"),
+                    }
+                    for _ in [0] if data.get("systolic_bp") is not None
+                ],
+            )
+            emergency = {
+                "classification": fallback["classification"],
+                "is_life_threatening": fallback["classification"] == "EMERGENCY",
+                "primary_instructions": fallback["guidance_instructions"],
+            }
         observations = [{"name": "acute triage", "value": emergency["classification"], "source": "deterministic rules"}]
         if emergency["is_life_threatening"] or emergency["classification"] == "URGENT":
             result = self._record(
@@ -41,7 +70,13 @@ class CardiovascularAssessmentService:
                 data,
                 "user_reported",
                 [],
-                ["Normal vital signs do not exclude an acute coronary event."],
+                [
+                    "Normal vital signs do not exclude an acute coronary event.",
+                    *(
+                        ["A downstream assessment provider was unavailable; deterministic safety rules were used."]
+                        if provider_unavailable else []
+                    ),
+                ],
                 emergency["primary_instructions"],
                 emergency["primary_instructions"],
             )
@@ -82,7 +117,11 @@ class CardiovascularAssessmentService:
             missing.append("heart_rate_history")
         for reading in bp[:5]:
             observations.append({"name": "blood pressure", "value": f"{reading.value_primary}/{reading.value_secondary}", "measured_at": reading.measured_at.isoformat(), "source": reading.source})
-        if len(bp) >= 3 and sum(x.value_primary >= 140 or (x.value_secondary or 0) >= 90 for x in bp[:5]) >= 3:
+        elevated_bp_count = sum(
+            1 for x in bp[:5]
+            if x.value_primary >= 140 or (x.value_secondary is not None and x.value_secondary >= 90)
+        )
+        if len(bp) >= 3 and elevated_bp_count >= 3:
             score += 2
             observations.append({"name": "blood pressure trend", "value": "repeatedly elevated", "source": "vital history"})
         if len(hr) >= 3 and all(x.value_primary > 100 for x in hr[:3]):
@@ -106,7 +145,9 @@ class CardiovascularAssessmentService:
                 score += 1
         if not lifestyle:
             missing.append("daily_habits")
-        classification = "higher_attention" if score >= 3 else "routine_prevention"
+        if provider_unavailable:
+            uncertainty.append("A downstream assessment provider was unavailable; this result uses deterministic rules and stored records only.")
+        classification = "higher_attention" if score >= 2 else "routine_prevention"
         recommendations = [
             "Discuss this prevention-oriented assessment with a qualified clinician.",
             "Continue recording rested blood pressure and heart rate with measurement timestamps.",

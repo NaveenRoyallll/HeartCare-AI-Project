@@ -2,7 +2,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Set
 from uuid import uuid4
-from jose import JWTError, jwt
+from jwt import InvalidTokenError as JWTError
+from jwt import decode, encode
 from passlib.context import CryptContext
 from app.core.config import settings
 
@@ -47,7 +48,7 @@ def create_access_token(
     if extra_claims:
         to_encode.update(extra_claims)
 
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    encoded_jwt = encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
 
@@ -77,7 +78,7 @@ def create_refresh_token(
         "jti": jti,
     }
 
-    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    encoded_jwt = encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt, jti
 
 
@@ -102,7 +103,7 @@ def verify_token(token: str, expected_type: Optional[str] = None) -> Dict[str, A
         JWTError: If signature is invalid, token expired, or jti is revoked.
     """
     try:
-        payload = jwt.decode(
+        payload = decode(
             token,
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],

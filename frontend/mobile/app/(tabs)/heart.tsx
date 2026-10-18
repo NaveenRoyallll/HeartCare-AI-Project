@@ -14,7 +14,16 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 
 export default function HeartHealthScreen() {
-  const { riskScore, riskFactors, getMeasurementsByType, latestAssessment, evaluateCardiovascularHealth } = useHealthStore();
+  const {
+    riskScore,
+    riskFactors,
+    getMeasurementsByType,
+    latestAssessment,
+    assessmentHistory,
+    assessmentLoading,
+    assessmentError,
+    evaluateCardiovascularHealth,
+  } = useHealthStore();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'modifiable' | 'non_modifiable'>('all');
 
   const bpMeasurements = getMeasurementsByType('bp');
@@ -40,36 +49,28 @@ export default function HeartHealthScreen() {
         <Card style={styles.scoreCard}>
           <View style={styles.scoreTopRow}>
             <View>
-              <Text style={styles.scoreLabel}>Cardiovascular 10-Yr Risk Score</Text>
-              <Text style={styles.scoreSub}>WHO / South Asian Risk Stratification</Text>
+              <Text style={styles.scoreLabel}>Validated quantitative risk score</Text>
+              <Text style={styles.scoreSub}>Available only when required inputs and a supported model are present</Text>
             </View>
             <Badge
-              label={riskScore.category.toUpperCase()}
+              label={latestAssessment?.classification?.replace('_', ' ').toUpperCase() || 'NOT ASSESSED'}
               status={
-                riskScore.category === 'low'
-                  ? 'normal'
-                  : riskScore.category === 'moderate'
-                  ? 'warning'
-                  : 'danger'
+                latestAssessment?.classification === 'higher_attention' ? 'warning' : 'normal'
               }
             />
           </View>
 
           <View style={styles.gaugeContainer}>
             <View style={styles.scoreCircle}>
-              <Text style={styles.scoreVal}>{riskScore.score}%</Text>
+              <Text style={styles.scoreVal}>{latestAssessment ? 'REVIEW' : '—'}</Text>
               <Text style={styles.scoreValLabel}>Est. Risk</Text>
             </View>
             <View style={styles.gaugeDesc}>
               <Text style={styles.gaugeTitle}>
-                {riskScore.category === 'low'
-                  ? 'Low Cardiovascular Risk'
-                  : riskScore.category === 'moderate'
-                  ? 'Moderate Cardiovascular Risk'
-                  : 'Elevated Clinical Risk'}
+                {latestAssessment ? latestAssessment.classification.replace('_', ' ') : 'No quantitative result'}
               </Text>
               <Text style={styles.gaugeBody}>
-                Based on age, gender, blood pressure history, and family risk background.
+                A missing or low result never rules out an emergency. Use the emergency screen for new or concerning symptoms.
               </Text>
             </View>
           </View>
@@ -97,11 +98,18 @@ export default function HeartHealthScreen() {
           <Text style={styles.bpAdvice}>
             This prevention review shows its inputs, missing data, and uncertainty. It is not a diagnosis and does not replace emergency care.
           </Text>
-          <TouchableOpacity style={styles.filterPillActive} onPress={() => void evaluateCardiovascularHealth()}>
-            <Text style={styles.filterPillTextActive}>Refresh health review</Text>
+          <TouchableOpacity style={styles.filterPillActive} onPress={() => void evaluateCardiovascularHealth()} disabled={assessmentLoading}>
+            <Text style={styles.filterPillTextActive}>{assessmentLoading ? 'Loading review…' : 'Refresh health review'}</Text>
           </TouchableOpacity>
+          {assessmentError ? <Text style={styles.bpAdvice}>Unable to refresh: {assessmentError}</Text> : null}
           {latestAssessment?.missing_inputs?.length ? (
             <Text style={styles.bpAdvice}>Missing: {latestAssessment.missing_inputs.join(', ')}</Text>
+          ) : null}
+          {latestAssessment?.uncertainty?.length ? (
+            <Text style={styles.bpAdvice}>Uncertainty: {latestAssessment.uncertainty.join(' ')}</Text>
+          ) : null}
+          {assessmentHistory.length > 1 ? (
+            <Text style={styles.bpAdvice}>{assessmentHistory.length} backend assessment records available in history.</Text>
           ) : null}
         </Card>
 

@@ -371,3 +371,145 @@ def test_text_report_extraction_is_traceable_and_confirmable(client):
     )
     assert confirmed.status_code == 200
     assert confirmed.json()["user_confirmed"] is True
+
+
+def test_assessment_history_is_authorized_and_preserves_emergency_separation(client, monkeypatch):
+    monkeypatch.setattr(settings, "DOCTOR_PROVISIONING_TOKEN", "test-provisioning-token")
+    patient = register(client, "assessment-integration@cardioguard.ai")
+    patient_token = login(client, "assessment-integration@cardioguard.ai")["access_token"]
+    patient_header = auth(patient_token)
+
+    for value in (145, 150, 148):
+        vital = client.post(
+            "/api/v1/vitals/",
+            headers=patient_header,
+            json={
+                "measurement_type": "blood_pressure",
+                "value_primary": value,
+                "value_secondary": 92,
+                "unit": "mmHg",
+                "source": "manual",
+            },
+        )
+        assert vital.status_code == 201
+
+    longitudinal = client.post(
+        "/api/v1/assessments/evaluate",
+        headers=patient_header,
+        json={"symptoms": []},
+    )
+    assert longitudinal.status_code == 201
+    assert longitudinal.json()["assessment_kind"] == "longitudinal_risk"
+    assert longitudinal.json()["classification"] == "higher_attention", longitudinal.json()
+    assert any(item["name"] == "blood pressure trend" for item in longitudinal.json()["observations_considered"])
+
+    emergency = client.post(
+        "/api/v1/assessments/evaluate",
+        headers=patient_header,
+        json={"symptoms": ["chest pain"], "heart_rate": 72, "systolic_bp": 120, "diastolic_bp": 75},
+    )
+    assert emergency.status_code == 201
+    assert emergency.json()["assessment_kind"] == "acute_triage"
+    assert emergency.json()["classification"] == "EMERGENCY"
+    assert emergency.json()["emergency_guidance"]
+    assert any("Normal vital signs" in item for item in emergency.json()["uncertainty"])
+
+    history = client.get("/api/v1/assessments/history", headers=patient_header)
+    assert history.status_code == 200
+    assert history.json()["total"] == 2
+
+    other = register(client, "assessment-isolation@cardioguard.ai")
+    other_token = login(client, "assessment-isolation@cardioguard.ai")["access_token"]
+    other_history = client.get("/api/v1/assessments/history", headers=auth(other_token))
+    assert other_history.status_code == 200
+    assert other_history.json()["total"] == 0
+
+    provisioned = client.post(
+        "/api/v1/auth/provision-doctor",
+        headers={"X-Doctor-Provisioning-Token": "test-provisioning-token"},
+        json={
+            "email": "assessment-doctor@cardioguard.ai",
+            "password": "DoctorStrongPass123!",
+            "full_name": "Assessment Doctor",
+            "license_number": "SYN-ASSESS",
+            "specialty": "Cardiology",
+            "hospital_affiliation": "Synthetic Hospital",
+        },
+    )
+    assert provisioned.status_code == 201
+    doctor_id = provisioned.json()["id"]
+    admin = User(
+        email="assessment-admin@cardioguard.ai",
+        hashed_password=get_password_hash("AdminStrongPass123!"),
+        full_name="Assessment Admin",
+        role="admin",
+        is_active=True,
+        is_verified=True,
+        is_doctor_verified=True,
+    )
+
+    async def save_admin() -> None:
+        async with client.app.state.test_session_factory() as session:
+            session.add(admin)
+            await session.commit()
+
+    asyncio.run(save_admin())
+    admin_token = login(client, admin.email, "AdminStrongPass123!")["access_token"]
+    assert client.post(
+        f"/api/v1/admin/doctors/{doctor_id}/verify",
+        headers=auth(admin_token),
+        json={"verified": True},
+    ).status_code == 200
+    doctor_token = client.post(
+        "/api/v1/auth/doctor/login",
+        json={"email": "assessment-doctor@cardioguard.ai", "password": "DoctorStrongPass123!"},
+    ).json()["access_token"]
+
+    denied = client.get(
+        f"/api/v1/doctor/patients/{patient['id']}/assessments",
+        headers=auth(doctor_token),
+    )
+    assert denied.status_code == 403
+    assert client.post(
+        "/api/v1/patients/access/grant",
+        headers=patient_header,
+        json={"doctor_id": doctor_id},
+    ).status_code == 200
+    authorized = client.get(
+        f"/api/v1/doctor/patients/{patient['id']}/assessments",
+        headers=auth(doctor_token),
+    )
+    assert authorized.status_code == 200
+    assert len(authorized.json()["assessments"]) == 2
+    assert authorized.json()["source_measurements"]
+
+
+def test_report_provider_failure_is_explicit_for_binary_upload(client):
+    register(client, "patient-report-provider@cardioguard.ai")
+    token = login(client, "patient-report-provider@cardioguard.ai")["access_token"]
+    response = client.post(
+        "/api/v1/reports/upload",
+        headers=auth(token),
+        files={"file": ("scan.pdf", b"%PDF synthetic", "application/pdf")},
+    )
+    assert response.status_code == 201
+    detail = client.get(f"/api/v1/reports/{response.json()['report_id']}", headers=auth(token))
+    assert detail.status_code == 200
+    assert detail.json()["processing_status"] == "pending_manual_review"
+    assert detail.json()["results"] == []
+
+
+def test_image_ocr_failure_is_explicit_and_requires_confirmation(client):
+    register(client, "patient-image-provider@cardioguard.ai")
+    token = login(client, "patient-image-provider@cardioguard.ai")["access_token"]
+    response = client.post(
+        "/api/v1/reports/upload",
+        headers=auth(token),
+        files={"file": ("scan.png", b"not-a-real-image", "image/png")},
+    )
+    assert response.status_code == 201
+    detail = client.get(f"/api/v1/reports/{response.json()['report_id']}", headers=auth(token))
+    assert detail.status_code == 200
+    assert detail.json()["processing_status"] == "pending_manual_review"
+    assert detail.json()["results"] == []
+    assert detail.json()["processing_error"]

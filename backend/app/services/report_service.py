@@ -1,6 +1,7 @@
 """Blood diagnostic report upload and biomarker extraction service."""
 import os
 import re
+import logging
 import aiofiles
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -9,6 +10,8 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.blood_report import BloodReport, BloodReportResult
+
+logger = logging.getLogger(__name__)
 
 try:
     from pypdf import PdfReader
@@ -132,22 +135,34 @@ class ReportService:
         # Binary inputs are extracted only through real parsers/OCR. No fallback
         # text or clinical values are fabricated when a provider is unavailable.
         pages: List[tuple[int, str]] = []
+        processing_error: Optional[str] = None
         if file.content_type == "text/plain":
             pages = [(1, content.decode("utf-8", errors="ignore"))]
         elif file.content_type == "application/pdf":
-            if PdfReader is not None:
-                reader = PdfReader(file_path)
-                pages = [(index + 1, page.extract_text() or "") for index, page in enumerate(reader.pages)]
-                if not any(text.strip() for _, text in pages) and pytesseract is not None and convert_from_path is not None:
-                    images = convert_from_path(file_path, first_page=1, last_page=len(reader.pages))
-                    pages = [(index + 1, pytesseract.image_to_string(image)) for index, image in enumerate(images)]
+            if PdfReader is None:
+                processing_error = "PDF text extraction is unavailable because pypdf is not installed."
             else:
-                pages = []
+                try:
+                    reader = PdfReader(file_path)
+                    pages = [(index + 1, page.extract_text() or "") for index, page in enumerate(reader.pages)]
+                    if not any(text.strip() for _, text in pages):
+                        if pytesseract is None or convert_from_path is None:
+                            processing_error = "Scanned PDF OCR is unavailable because Tesseract, Poppler, or their Python adapters are not installed."
+                        else:
+                            images = convert_from_path(file_path, first_page=1, last_page=len(reader.pages))
+                            pages = [(index + 1, pytesseract.image_to_string(image)) for index, image in enumerate(images)]
+                except Exception as exc:
+                    logger.exception("Medical PDF extraction failed")
+                    processing_error = f"PDF/OCR extraction failed: {exc.__class__.__name__}."
         elif file.content_type in {"image/jpeg", "image/png"}:
-            if Image is not None and pytesseract is not None:
-                pages = [(1, pytesseract.image_to_string(Image.open(file_path)))]
+            if Image is None or pytesseract is None:
+                processing_error = "Image OCR is unavailable because Pillow or Tesseract is not installed."
             else:
-                pages = []
+                try:
+                    pages = [(1, pytesseract.image_to_string(Image.open(file_path)))]
+                except Exception as exc:
+                    logger.exception("Medical image OCR failed")
+                    processing_error = f"Image OCR failed: {exc.__class__.__name__}."
         raw_text = "\n".join(text for _, text in pages) if pages else None
         processing_status = "completed" if raw_text and raw_text.strip() else "pending_manual_review"
 
@@ -161,6 +176,7 @@ class ReportService:
             report_date=datetime.now().date(),
             lab_name="Diagnostic Pathology Lab",
             processing_status=processing_status,
+            processing_error=processing_error,
             raw_text=raw_text,
         )
         db.add(report)

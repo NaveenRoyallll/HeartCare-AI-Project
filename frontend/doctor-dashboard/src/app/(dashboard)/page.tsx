@@ -138,16 +138,18 @@ export default function DashboardOverviewPage() {
             </span>
             <span className="text-slate-400">•</span>
             <span className="text-xs text-slate-300">
-              {doctor?.hospitalAffiliation || "Metro General Heart Center"}
+              {doctor?.hospitalAffiliation || "Hospital affiliation not provided"}
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Welcome back, {doctor?.name || "Dr. Sarah Jenkins"}
+            Welcome back, {doctor?.name || "Doctor"}
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
             {criticalAlerts.length > 0
               ? `You have ${criticalAlerts.length} critical patient telemetry alerts and ${urgentReviews.length} diagnostic items requiring your review.`
-              : "All telemetry parameters are currently within monitored reference thresholds."}
+              : patients.length > 0
+              ? "No unacknowledged critical alerts are currently recorded for authorized patients."
+              : "No authorized patient records are currently available."}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -173,7 +175,7 @@ export default function DashboardOverviewPage() {
                 {patients.length}
               </h3>
               <p className="text-[11px] text-teal-600 font-medium mt-1">
-                100% Authorized Consents
+                Patient access is consent-scoped
               </p>
             </div>
             <div className="p-3 rounded-xl bg-navy-50 text-navy-800">
@@ -230,7 +232,7 @@ export default function DashboardOverviewPage() {
                 Telemetry Sync
               </p>
               <h3 className="text-2xl font-bold text-slate-900 mt-1">
-                Live
+                Backend records
               </h3>
               <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

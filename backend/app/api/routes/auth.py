@@ -2,7 +2,7 @@
 import logging
 import secrets
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from jose import JWTError
+from jwt import InvalidTokenError as JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings

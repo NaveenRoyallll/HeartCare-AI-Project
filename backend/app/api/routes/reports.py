@@ -44,7 +44,11 @@ async def upload_blood_report(
             "Report uploaded and text biomarkers extracted; extracted values require "
             "user or clinician confirmation."
             if items
-            else "Report uploaded. No validated structured values were extracted; manual review is required."
+            else (
+                f"Report uploaded. {report.processing_error}"
+                if report.processing_error
+                else "Report uploaded. No validated structured values were extracted; manual review is required."
+            )
         ),
         results_extracted=len(items),
     )
@@ -91,6 +95,7 @@ async def get_report_detail(
         report_date=report.report_date,
         lab_name=report.lab_name,
         processing_status=report.processing_status,
+        processing_error=report.processing_error,
         created_at=report.created_at,
         raw_text=report.raw_text,
         results=[BloodReportResultResponse.model_validate(r) for r in results],

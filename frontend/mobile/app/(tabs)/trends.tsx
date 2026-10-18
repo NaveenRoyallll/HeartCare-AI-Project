@@ -93,30 +93,21 @@ export default function TrendsScreen() {
               <View style={styles.gridLine1} />
               <View style={styles.gridLine2} />
               <View style={styles.gridLine3} />
-              {/* Sample visualization bars for recent readings */}
-              {[
-                { date: 'Mon', sys: 122, dia: 80 },
-                { date: 'Tue', sys: 128, dia: 84 },
-                { date: 'Wed', sys: 124, dia: 82 },
-                { date: 'Thu', sys: 120, dia: 78 },
-                { date: 'Fri', sys: 126, dia: 82 },
-                { date: 'Sat', sys: 124, dia: 80 },
-                { date: 'Sun', sys: 122, dia: 81 },
-              ].map((item, idx) => (
+              {bpData.slice(0, 7).reverse().map((item, idx) => (
                 <View key={idx} style={styles.barGroup}>
                   <View
                     style={[
                       styles.barSystolic,
-                      { height: Math.max(20, (item.sys - 60) * 1.4) },
+                      { height: Math.max(20, (item.value - 60) * 1.4) },
                     ]}
                   />
                   <View
                     style={[
                       styles.barDiastolic,
-                      { height: Math.max(10, (item.dia - 40) * 1.1) },
+                      { height: Math.max(10, ((item.secondaryValue || 0) - 40) * 1.1) },
                     ]}
                   />
-                  <Text style={styles.barDateLabel}>{item.date}</Text>
+                  <Text style={styles.barDateLabel}>{new Date(item.recordedAt).toLocaleDateString()}</Text>
                 </View>
               ))}
             </View>
@@ -146,7 +137,9 @@ export default function TrendsScreen() {
           </View>
 
           <View style={styles.pulseSparklineContainer}>
-            {[68, 72, 75, 71, 74, 72, 70].map((bpm, index) => (
+            {hrData.slice(0, 7).reverse().map((measurement, index) => {
+              const bpm = measurement.value;
+              return (
               <View key={index} style={styles.sparkCol}>
                 <View
                   style={[
@@ -156,7 +149,8 @@ export default function TrendsScreen() {
                 />
                 <Text style={styles.sparkVal}>{bpm}</Text>
               </View>
-            ))}
+              );
+            })}
           </View>
           <Text style={styles.chartFootnote}>
             Optimal resting adult heart rate typically falls between 60 - 80 bpm.
@@ -176,16 +170,16 @@ export default function TrendsScreen() {
           </View>
           <View style={styles.weightSummaryRow}>
             <View style={styles.weightMetric}>
-              <Text style={styles.weightMetricNum}>{weightData[0]?.value || '74.2'}</Text>
+              <Text style={styles.weightMetricNum}>{weightData[0]?.value ?? '—'}</Text>
               <Text style={styles.weightMetricLbl}>Current (kg)</Text>
             </View>
             <View style={styles.weightMetric}>
-              <Text style={styles.weightMetricNum}>24.8</Text>
-              <Text style={styles.weightMetricLbl}>BMI (Normal)</Text>
+              <Text style={styles.weightMetricNum}>—</Text>
+              <Text style={styles.weightMetricLbl}>BMI (requires height)</Text>
             </View>
             <View style={styles.weightMetric}>
-              <Text style={styles.weightMetricNum}>-0.8 kg</Text>
-              <Text style={styles.weightMetricLbl}>30-Day Delta</Text>
+              <Text style={styles.weightMetricNum}>—</Text>
+              <Text style={styles.weightMetricLbl}>30-day delta</Text>
             </View>
           </View>
         </Card>

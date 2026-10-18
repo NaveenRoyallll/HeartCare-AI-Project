@@ -675,4 +675,6 @@ export const MOCK_PATIENT_DETAIL_CHEN: PatientDetail = {
     },
   ],
   activeAlerts: [MOCK_ALERTS[0], MOCK_ALERTS[1]],
+  assessments: [],
+  assessmentSourceMeasurements: [],
 };

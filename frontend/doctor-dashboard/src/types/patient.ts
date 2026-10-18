@@ -1,5 +1,6 @@
 import { VitalMeasurement, VitalsSummary } from "./vitals";
 import { RiskAssessment } from "./risk";
+import { CardiovascularAssessment } from "./assessment";
 
 export interface PatientDemographics {
   id: string;
@@ -155,7 +156,7 @@ export interface PatientDetail {
   conditions: MedicalCondition[];
   allergies: string[];
   medications: Medication[];
-  currentRisk: RiskAssessment;
+  currentRisk: RiskAssessment | null;
   riskHistory: RiskAssessment[];
   recentVitals: VitalMeasurement[];
   vitalsSummary: VitalsSummary;
@@ -163,4 +164,6 @@ export interface PatientDetail {
   ecgs: ECGRecord[];
   notes: ClinicalNote[];
   activeAlerts: AlertItem[];
+  assessments: CardiovascularAssessment[];
+  assessmentSourceMeasurements: VitalMeasurement[];
 }

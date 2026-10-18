@@ -43,3 +43,22 @@ class CardiovascularAssessmentResponse(BaseModel):
 class CardiovascularAssessmentHistoryResponse(BaseModel):
     total: int
     items: List[CardiovascularAssessmentResponse]
+
+
+class AssessmentSourceMeasurement(BaseModel):
+    id: str
+    measurement_type: str
+    value_primary: float
+    value_secondary: Optional[float] = None
+    unit: str
+    source: str
+    measured_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AuthorizedAssessmentHistoryResponse(BaseModel):
+    patient_id: str
+    assessments: List[CardiovascularAssessmentResponse]
+    source_measurements: List[AssessmentSourceMeasurement]

@@ -9,6 +9,7 @@ import {
   AlertItem,
   ReviewItem,
   VitalMeasurement,
+  CardiovascularAssessment,
 } from "../types";
 import {
   MOCK_DOCTOR,
@@ -101,6 +102,8 @@ function backendPatientToDetail(patient: {
     ecgs: [],
     notes: [],
     activeAlerts: [],
+    assessments: [],
+    assessmentSourceMeasurements: [],
   };
 }
 
@@ -341,7 +344,37 @@ class ApiService {
         email: string;
         phone?: string | null;
       }>(`/doctor/patients/${id}`);
-      return backendPatientToDetail(patient);
+      const [assessmentHistory, vitals] = await Promise.all([
+        this.getPatientAssessments(id),
+        this.getPatientVitals(id),
+      ]);
+      const detail = backendPatientToDetail(patient);
+      return {
+        ...detail,
+        currentRisk: null,
+        assessments: assessmentHistory.assessments,
+        assessmentSourceMeasurements: assessmentHistory.source_measurements.map((item) => ({
+          id: item.id,
+          patientId: id,
+          type: item.measurement_type as VitalMeasurement["type"],
+          value: item.value_primary,
+          secondaryValue: item.value_secondary ?? undefined,
+          unit: item.unit,
+          timestamp: item.measured_at,
+          source: item.source as VitalMeasurement["source"],
+        })),
+        recentVitals: vitals,
+        vitalsSummary: vitals.reduce((summary, measurement) => {
+          const key = measurement.type === "heart_rate" ? "lastHeartRate"
+            : measurement.type === "blood_pressure" ? "lastBloodPressure"
+            : measurement.type === "spo2" ? "lastSpO2"
+            : measurement.type === "respiratory_rate" ? "lastRespiratoryRate"
+            : measurement.type === "blood_glucose" ? "lastGlucose"
+            : measurement.type === "weight" ? "lastWeight" : null;
+          if (key && !summary[key]) summary[key] = measurement;
+          return summary;
+        }, {} as PatientDetail["vitalsSummary"]),
+      };
     } catch (error) {
       if (!DEMO_MODE) throw error;
       const found = MOCK_PATIENTS_LIST.find((p) => p.id === id);
@@ -353,6 +386,22 @@ class ApiService {
       }
       return MOCK_PATIENT_DETAIL_CHEN;
     }
+  }
+
+  public async getPatientAssessments(id: string): Promise<{
+    patient_id: string;
+    assessments: CardiovascularAssessment[];
+    source_measurements: Array<{
+      id: string;
+      measurement_type: string;
+      value_primary: number;
+      value_secondary?: number | null;
+      unit: string;
+      source: string;
+      measured_at: string;
+    }>;
+  }> {
+    return this.request(`/doctor/patients/${id}/assessments`);
   }
 
   public async addClinicalNote(
@@ -448,9 +497,27 @@ class ApiService {
     limit: number = 50
   ): Promise<VitalMeasurement[]> {
     try {
-      return await this.request<VitalMeasurement[]>(
+      const records = await this.request<Array<{
+        id: string;
+        measurement_type: string;
+        value_primary: number;
+        value_secondary?: number | null;
+        unit: string;
+        source: string;
+        measured_at: string;
+      }>>(
         `/doctor/patients/${patientId}/vitals?limit=${limit}`
       );
+      return records.map((item) => ({
+        id: item.id,
+        patientId,
+        type: item.measurement_type as VitalMeasurement["type"],
+        value: item.value_primary,
+        secondaryValue: item.value_secondary ?? undefined,
+        unit: item.unit,
+        timestamp: item.measured_at,
+        source: item.source as VitalMeasurement["source"],
+      }));
     } catch (error) {
       if (!DEMO_MODE) throw error;
       return MOCK_PATIENT_DETAIL_CHEN.recentVitals;

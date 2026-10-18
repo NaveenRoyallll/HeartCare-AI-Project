@@ -34,6 +34,7 @@ class BloodReportResponse(BaseModel):
     report_date: Optional[date] = None
     lab_name: Optional[str] = None
     processing_status: str
+    processing_error: Optional[str] = None
     created_at: datetime
 
     class Config:

@@ -21,7 +21,7 @@ import { Button } from '../../components/ui/Button';
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { measurements, medications, riskScore, dataSource, getLatestMeasurement } = useHealthStore();
+  const { measurements, medications, latestAssessment, dataSource, getLatestMeasurement } = useHealthStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = React.useCallback(() => {
@@ -122,33 +122,29 @@ export default function HomeScreen() {
         </View>
 
         {/* Cardiovascular Risk Summary Banner */}
-        {riskScore && (
+        {latestAssessment && (
           <Card style={styles.riskCard} onPress={() => router.push('/(tabs)/heart')}>
             <View style={styles.riskHeader}>
               <View>
-                <Text style={styles.riskSectionTitle}>10-Year Cardiovascular Risk</Text>
-                <Text style={styles.riskSubtitle}>Based on clinical risk profile</Text>
+                <Text style={styles.riskSectionTitle}>Latest cardiovascular review</Text>
+                <Text style={styles.riskSubtitle}>From the shared backend assessment record</Text>
               </View>
               <Badge
-                label={riskScore.category.toUpperCase()}
+                label={latestAssessment.classification.replace('_', ' ').toUpperCase()}
                 status={
-                  riskScore.category === 'low'
-                    ? 'normal'
-                    : riskScore.category === 'moderate'
-                    ? 'warning'
-                    : 'danger'
+                  latestAssessment.classification === 'higher_attention' ? 'warning' : 'normal'
                 }
               />
             </View>
 
             <View style={styles.riskScoreRow}>
-              <Text style={styles.riskScoreNumber}>{riskScore.score}%</Text>
-              <Text style={styles.riskScoreExplain}>Estimated risk of cardiovascular event</Text>
+              <Text style={styles.riskScoreNumber}>REVIEW</Text>
+              <Text style={styles.riskScoreExplain}>This is not a diagnosis or an acute safety clearance.</Text>
             </View>
 
             <View style={styles.riskFooter}>
               <Text style={styles.riskFactorCount}>
-                {riskScore.factorsIdentified.length} risk factors identified
+                {latestAssessment.missing_inputs.length} missing input categories
               </Text>
               <View style={styles.viewPlanRow}>
                 <Text style={styles.viewPlanText}>View Prevention Plan</Text>

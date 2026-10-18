@@ -12,6 +12,9 @@ interface HealthState {
   dataSource: 'live' | 'empty';
   error: string | null;
   latestAssessment: CardiovascularAssessment | null;
+  assessmentHistory: CardiovascularAssessment[];
+  assessmentLoading: boolean;
+  assessmentError: string | null;
 
   initialize: () => Promise<void>;
   addMeasurement: (measurement: Omit<VitalMeasurement, 'id'>) => Promise<void>;
@@ -55,6 +58,9 @@ export const useHealthStore = create<HealthState>((set, get) => ({
   dataSource: 'empty',
   error: null,
   latestAssessment: null,
+  assessmentHistory: [],
+  assessmentLoading: false,
+  assessmentError: null,
 
   initialize: async () => {
     try {
@@ -92,7 +98,14 @@ export const useHealthStore = create<HealthState>((set, get) => ({
         instructions: item.instructions || undefined,
         isActive: item.is_active,
       }));
-      set({ measurements, medications, latestAssessment: assessmentHistory.items[0] || null, dataSource: 'live', isLoading: false });
+      set({
+        measurements,
+        medications,
+        latestAssessment: assessmentHistory.items[0] || null,
+        assessmentHistory: assessmentHistory.items,
+        dataSource: 'live',
+        isLoading: false,
+      });
     } catch (error) {
       set({ isLoading: false, error: error instanceof Error ? error.message : 'Unable to load live health data' });
     }
@@ -158,14 +171,27 @@ export const useHealthStore = create<HealthState>((set, get) => ({
   },
 
   evaluateCardiovascularHealth: async () => {
+    set({ assessmentLoading: true, assessmentError: null });
     const latestBp = get().getLatestMeasurement('bp');
     const latestHr = get().getLatestMeasurement('heart_rate');
-    const assessment = await api.evaluateCardiovascularAssessment<CardiovascularAssessment>({
-      symptoms: [],
-      heart_rate: latestHr?.value,
-      systolic_bp: latestBp?.value,
-      diastolic_bp: latestBp?.secondaryValue,
-    });
-    set({ latestAssessment: assessment });
+    try {
+      const assessment = await api.evaluateCardiovascularAssessment<CardiovascularAssessment>({
+        symptoms: [],
+        heart_rate: latestHr?.value,
+        systolic_bp: latestBp?.value,
+        diastolic_bp: latestBp?.secondaryValue,
+      });
+      set((state) => ({
+        latestAssessment: assessment,
+        assessmentHistory: [assessment, ...state.assessmentHistory],
+        assessmentLoading: false,
+      }));
+    } catch (error) {
+      set({
+        assessmentLoading: false,
+        assessmentError: error instanceof Error ? error.message : 'Assessment provider is unavailable',
+      });
+      throw error;
+    }
   },
 }));

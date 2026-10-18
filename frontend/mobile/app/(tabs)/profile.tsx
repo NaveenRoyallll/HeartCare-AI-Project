@@ -84,26 +84,26 @@ export default function ProfileScreen() {
               <Ionicons name="person" size={32} color={colors.primary} />
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{user?.fullName || 'Arjun Sharma'}</Text>
-              <Text style={styles.userContact}>{user?.email || 'patient@cardioguard.ai'}</Text>
-              <Text style={styles.userContact}>{user?.phoneNumber || '+91 98765 43210'}</Text>
+              <Text style={styles.userName}>{user?.fullName || 'Patient'}</Text>
+              <Text style={styles.userContact}>{user?.email || 'Email not provided'}</Text>
+              <Text style={styles.userContact}>{user?.phoneNumber || 'Phone not provided'}</Text>
             </View>
           </View>
 
           {/* Quick Metrics */}
           <View style={styles.userMetricsRow}>
             <View style={styles.userMetricItem}>
-              <Text style={styles.metricVal}>{user?.weight || 74} kg</Text>
+              <Text style={styles.metricVal}>{user?.weight ? `${user.weight} kg` : '—'}</Text>
               <Text style={styles.metricLbl}>Weight</Text>
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.userMetricItem}>
-              <Text style={styles.metricVal}>{user?.height || 172} cm</Text>
+              <Text style={styles.metricVal}>{user?.height ? `${user.height} cm` : '—'}</Text>
               <Text style={styles.metricLbl}>Height</Text>
             </View>
             <View style={styles.metricDivider} />
             <View style={styles.userMetricItem}>
-              <Text style={styles.metricVal}>47 yrs</Text>
+              <Text style={styles.metricVal}>—</Text>
               <Text style={styles.metricLbl}>Age</Text>
             </View>
           </View>

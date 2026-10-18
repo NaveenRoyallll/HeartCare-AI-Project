@@ -11,6 +11,7 @@ from app.models.vital import VitalMeasurement
 from app.models.risk_assessment import RiskAssessment
 from app.models.emergency_event import EmergencyEvent
 from app.models.clinical_alert import ClinicalAlert
+from app.models.cardiovascular_assessment import CardiovascularAssessment
 from app.schemas.auth import MessageResponse
 from app.schemas.doctor import (
     DoctorAccessRequest,
@@ -27,6 +28,11 @@ from app.schemas.doctor import (
 from app.schemas.vitals import VitalMeasurementResponse
 from app.schemas.risk import RiskAssessmentResponse
 from app.schemas.user import UserResponse
+from app.schemas.assessment import (
+    AuthorizedAssessmentHistoryResponse,
+    CardiovascularAssessmentResponse,
+    AssessmentSourceMeasurement,
+)
 
 router = APIRouter(tags=["Doctor Portal & Access Management"])
 
@@ -418,6 +424,40 @@ async def get_patient_vitals(
         .order_by(desc(VitalMeasurement.measured_at))
     )
     return (await db.execute(q)).scalars().all()
+
+
+@router.get(
+    "/doctor/patients/{patient_id}/assessments",
+    response_model=AuthorizedAssessmentHistoryResponse,
+)
+async def get_patient_assessment_history(
+    patient_id: str,
+    current_doctor: User = Depends(require_role("doctor", "admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return assessment history and source measurements after consent verification."""
+    await check_doctor_patient_authorization(current_doctor, patient_id, db)
+    patient = (await db.execute(select(User.id).where(User.id == patient_id, User.role == "patient"))).scalar_one_or_none()
+    if not patient:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    assessments = (await db.execute(
+        select(CardiovascularAssessment)
+        .where(CardiovascularAssessment.user_id == patient_id)
+        .order_by(desc(CardiovascularAssessment.created_at))
+        .limit(100)
+    )).scalars().all()
+    measurements = (await db.execute(
+        select(VitalMeasurement)
+        .where(VitalMeasurement.user_id == patient_id, VitalMeasurement.is_deleted.is_(False))
+        .order_by(desc(VitalMeasurement.measured_at))
+        .limit(100)
+    )).scalars().all()
+    return AuthorizedAssessmentHistoryResponse(
+        patient_id=patient_id,
+        assessments=[CardiovascularAssessmentResponse.model_validate(item) for item in assessments],
+        source_measurements=[AssessmentSourceMeasurement.model_validate(item) for item in measurements],
+    )
 
 
 @router.get("/doctor/patients/{patient_id}/risk-assessments", response_model=List[RiskAssessmentResponse])

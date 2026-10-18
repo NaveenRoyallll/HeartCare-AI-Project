@@ -167,10 +167,10 @@ export default function AlertsPage() {
       ) : filteredAlerts.length === 0 ? (
         <EmptyState
           icon={<CheckCircle2 className="w-12 h-12 text-teal-600" />}
-          title="All Telemetry Alerts Clear"
+          title="No matching telemetry alerts"
           description={
             filter === "unack"
-              ? "All critical and warning telemetry alerts have been acknowledged by the cardiology team."
+              ? "No unacknowledged critical or warning alerts are recorded for authorized patients."
               : "No telemetry alerts match the selected filter criteria."
           }
         />
