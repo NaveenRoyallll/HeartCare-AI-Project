@@ -1,0 +1,341 @@
+cardioguard-ai/
+│
+├── README.md
+├── LICENSE
+├── .gitignore
+├── .env.example
+├── docker-compose.yml
+├── Makefile
+│
+├── docs/
+│   ├── architecture/
+│   │   ├── system-architecture.md
+│   │   ├── data-flow.md
+│   │   ├── ai-architecture.md
+│   │   └── emergency-flow.md
+│   │
+│   ├── api/
+│   │   └── api-documentation.md
+│   │
+│   ├── database/
+│   │   └── database-design.md
+│   │
+│   ├── ai/
+│   │   ├── risk-model.md
+│   │   ├── ecg-model.md
+│   │   ├── anomaly-detection.md
+│   │   └── evaluation.md
+│   │
+│   ├── clinical/
+│   │   ├── safety-principles.md
+│   │   ├── clinical-rules.md
+│   │   └── limitations.md
+│   │
+│   └── product/
+│       ├── PRD.md
+│       ├── user-flows.md
+│       └── roadmap.md
+│
+├── frontend/
+│   │
+│   ├── mobile/
+│   │   ├── app/
+│   │   │   ├── (auth)/
+│   │   │   │   ├── login.tsx
+│   │   │   │   ├── register.tsx
+│   │   │   │   └── forgot-password.tsx
+│   │   │   │
+│   │   │   ├── (onboarding)/
+│   │   │   │   ├── profile.tsx
+│   │   │   │   ├── medical-history.tsx
+│   │   │   │   ├── lifestyle.tsx
+│   │   │   │   └── emergency-contact.tsx
+│   │   │   │
+│   │   │   ├── (tabs)/
+│   │   │   │   ├── index.tsx
+│   │   │   │   ├── heart.tsx
+│   │   │   │   ├── trends.tsx
+│   │   │   │   ├── coach.tsx
+│   │   │   │   └── profile.tsx
+│   │   │   │
+│   │   │   ├── emergency/
+│   │   │   │   ├── index.tsx
+│   │   │   │   ├── symptoms.tsx
+│   │   │   │   └── emergency-result.tsx
+│   │   │   │
+│   │   │   ├── ecg/
+│   │   │   │   ├── upload.tsx
+│   │   │   │   ├── analysis.tsx
+│   │   │   │   └── history.tsx
+│   │   │   │
+│   │   │   ├── reports/
+│   │   │   │   ├── upload.tsx
+│   │   │   │   └── results.tsx
+│   │   │   │
+│   │   │   ├── medications/
+│   │   │   │   ├── index.tsx
+│   │   │   │   └── add.tsx
+│   │   │   │
+│   │   │   └── devices/
+│   │   │       ├── index.tsx
+│   │   │       └── connect.tsx
+│   │   │
+│   │   ├── components/
+│   │   │   ├── ui/
+│   │   │   ├── charts/
+│   │   │   ├── cards/
+│   │   │   ├── forms/
+│   │   │   ├── health/
+│   │   │   └── emergency/
+│   │   │
+│   │   ├── services/
+│   │   │   ├── api.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── health.ts
+│   │   │   ├── ecg.ts
+│   │   │   ├── reports.ts
+│   │   │   └── emergency.ts
+│   │   │
+│   │   ├── hooks/
+│   │   ├── store/
+│   │   ├── types/
+│   │   ├── utils/
+│   │   ├── constants/
+│   │   └── assets/
+│   │
+│   └── doctor-dashboard/
+│       ├── src/
+│       │   ├── pages/
+│       │   │   ├── Dashboard.tsx
+│       │   │   ├── Patients.tsx
+│       │   │   ├── PatientDetails.tsx
+│       │   │   ├── ECGReview.tsx
+│       │   │   ├── Reports.tsx
+│       │   │   └── Alerts.tsx
+│       │   │
+│       │   ├── components/
+│       │   ├── services/
+│       │   ├── hooks/
+│       │   ├── store/
+│       │   └── types/
+│       │
+│       └── package.json
+│
+├── backend/
+│   │
+│   ├── app/
+│   │   ├── main.py
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── security.py
+│   │   │   ├── database.py
+│   │   │   ├── redis.py
+│   │   │   └── logging.py
+│   │   │
+│   │   ├── api/
+│   │   │   ├── dependencies.py
+│   │   │   │
+│   │   │   └── routes/
+│   │   │       ├── auth.py
+│   │   │       ├── users.py
+│   │   │       ├── health.py
+│   │   │       ├── vitals.py
+│   │   │       ├── risk.py
+│   │   │       ├── ecg.py
+│   │   │       ├── reports.py
+│   │   │       ├── medications.py
+│   │   │       ├── lifestyle.py
+│   │   │       ├── devices.py
+│   │   │       ├── emergency.py
+│   │   │       ├── notifications.py
+│   │   │       └── doctor.py
+│   │   │
+│   │   ├── models/
+│   │   │   ├── user.py
+│   │   │   ├── medical_history.py
+│   │   │   ├── vital.py
+│   │   │   ├── blood_report.py
+│   │   │   ├── ecg.py
+│   │   │   ├── medication.py
+│   │   │   ├── risk_assessment.py
+│   │   │   ├── emergency_event.py
+│   │   │   └── wearable.py
+│   │   │
+│   │   ├── schemas/
+│   │   │   ├── auth.py
+│   │   │   ├── user.py
+│   │   │   ├── vitals.py
+│   │   │   ├── ecg.py
+│   │   │   ├── risk.py
+│   │   │   ├── emergency.py
+│   │   │   └── reports.py
+│   │   │
+│   │   ├── services/
+│   │   │   ├── user_service.py
+│   │   │   ├── health_service.py
+│   │   │   ├── vital_service.py
+│   │   │   ├── risk_service.py
+│   │   │   ├── ecg_service.py
+│   │   │   ├── report_service.py
+│   │   │   ├── notification_service.py
+│   │   │   └── emergency_service.py
+│   │   │
+│   │   ├── clinical/
+│   │   │   ├── rules_engine.py
+│   │   │   ├── alert_rules.py
+│   │   │   ├── symptom_rules.py
+│   │   │   ├── risk_factors.py
+│   │   │   └── safety_checks.py
+│   │   │
+│   │   ├── workers/
+│   │   │   ├── celery_app.py
+│   │   │   ├── risk_tasks.py
+│   │   │   ├── ecg_tasks.py
+│   │   │   ├── report_tasks.py
+│   │   │   └── notification_tasks.py
+│   │   │
+│   │   └── utils/
+│   │       ├── validators.py
+│   │       ├── encryption.py
+│   │       ├── timestamps.py
+│   │       └── file_utils.py
+│   │
+│   ├── migrations/
+│   ├── tests/
+│   │   ├── unit/
+│   │   ├── integration/
+│   │   ├── api/
+│   │   └── security/
+│   │
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── ai/
+│   │
+│   ├── risk_prediction/
+│   │   ├── data/
+│   │   │   ├── raw/
+│   │   │   ├── processed/
+│   │   │   └── external/
+│   │   │
+│   │   ├── notebooks/
+│   │   │   ├── data_exploration.ipynb
+│   │   │   ├── feature_engineering.ipynb
+│   │   │   └── model_training.ipynb
+│   │   │
+│   │   ├── src/
+│   │   │   ├── preprocessing.py
+│   │   │   ├── features.py
+│   │   │   ├── train.py
+│   │   │   ├── evaluate.py
+│   │   │   └── predict.py
+│   │   │
+│   │   ├── models/
+│   │   └── configs/
+│   │
+│   ├── ecg_analysis/
+│   │   ├── data/
+│   │   ├── preprocessing/
+│   │   │   ├── filtering.py
+│   │   │   ├── denoising.py
+│   │   │   └── normalization.py
+│   │   │
+│   │   ├── models/
+│   │   │   ├── cnn/
+│   │   │   ├── lstm/
+│   │   │   └── transformer/
+│   │   │
+│   │   ├── training/
+│   │   │   ├── train.py
+│   │   │   └── evaluate.py
+│   │   │
+│   │   └── inference/
+│   │       └── predict.py
+│   │
+│   ├── anomaly_detection/
+│   │   ├── preprocessing.py
+│   │   ├── feature_engineering.py
+│   │   ├── train.py
+│   │   ├── detect.py
+│   │   └── models/
+│   │
+│   ├── health_assistant/
+│   │   ├── prompts/
+│   │   │   ├── system.txt
+│   │   │   ├── safety.txt
+│   │   │   └── emergency.txt
+│   │   │
+│   │   ├── rag/
+│   │   │   ├── ingestion.py
+│   │   │   ├── retrieval.py
+│   │   │   └── embeddings.py
+│   │   │
+│   │   ├── agent.py
+│   │   └── safety.py
+│   │
+│   ├── common/
+│   │   ├── preprocessing/
+│   │   ├── metrics/
+│   │   ├── visualization/
+│   │   └── utils/
+│   │
+│   └── requirements.txt
+│
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   ├── external/
+│   ├── synthetic/
+│   └── README.md
+│
+├── database/
+│   ├── schema.sql
+│   ├── seed.sql
+│   └── migrations/
+│
+├── storage/
+│   ├── uploads/
+│   │   ├── ecg/
+│   │   ├── reports/
+│   │   └── images/
+│   │
+│   └── processed/
+│
+├── scripts/
+│   ├── setup.sh
+│   ├── seed_database.py
+│   ├── create_admin.py
+│   ├── train_models.py
+│   └── backup_database.py
+│
+├── tests/
+│   ├── e2e/
+│   ├── security/
+│   └── performance/
+│
+├── infrastructure/
+│   ├── docker/
+│   │   ├── backend.Dockerfile
+│   │   ├── frontend.Dockerfile
+│   │   └── ai.Dockerfile
+│   │
+│   ├── nginx/
+│   │   └── nginx.conf
+│   │
+│   └── monitoring/
+│       ├── prometheus.yml
+│       └── grafana/
+│
+├── .github/
+│   └── workflows/
+│       ├── backend-ci.yml
+│       ├── frontend-ci.yml
+│       ├── ml-ci.yml
+│       └── security-scan.yml
+│
+└── security/
+    ├── threat-model.md
+    ├── privacy-policy.md
+    ├── data-retention.md
+    └── access-control.md

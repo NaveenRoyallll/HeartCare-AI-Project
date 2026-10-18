@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+venv/
+.venv/
+env/
+.env
+*.env.local
+
+# Node
+node_modules/
+.next/
+.expo/
+dist/
+*.tsbuildinfo
+.turbo/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/
+*.lcov
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+*.tgz
+
+# Database
+*.db
+*.sqlite3
+*.sqlite
+
+# Uploaded files — never commit patient data
+storage/uploads/
+storage/processed/
+
+# Model binaries
+ai/risk_prediction/models/*.pkl
+ai/risk_prediction/models/*.joblib
+ai/risk_prediction/models/*.pt
+ai/ecg_analysis/models/**/*.pt
+ai/ecg_analysis/models/**/*.onnx
+ai/anomaly_detection/models/*.pkl
+
+# Data — never commit patient/training data
+data/raw/
+data/processed/
+data/external/
+data/synthetic/*.csv
+data/synthetic/*.json
+
+# Secrets
+*.pem
+*.key
+*.crt
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Docker volumes
+pgdata/
+redis-data/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Alembic
+backend/migrations/versions/*.pyc

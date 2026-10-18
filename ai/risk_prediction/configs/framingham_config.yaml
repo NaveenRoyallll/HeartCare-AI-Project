@@ -1,0 +1,21 @@
+model_name: framingham_general_cvd_2008
+version: "1.0.0"
+source: "D'Agostino et al., Circulation 2008;117(6):743-753"
+intended_population: "Adults 30-79, primarily validated in white American populations"
+required_inputs:
+  - age
+  - sex  
+  - total_cholesterol
+  - hdl_cholesterol
+  - systolic_bp
+  - bp_treated
+  - smoker
+  - diabetic
+limitations:
+  - "Not validated for South Asian populations"
+  - "May underestimate risk in Indian populations"
+  - "Does not account for family history"
+  - "Does not account for BMI or physical activity"
+  - "Not suitable for ages outside 30-79"
+  - "Research/educational use only"
+is_research_only: true
